@@ -66,6 +66,23 @@ function isReminderExpired(type, now = new Date()) {
     return !isWithinReminderWindow(type, now);
 }
 
+/**
+ * Deletes the previously sent, unacknowledged reminder message for this type
+ * so that mention notifications never pile up beyond one at a time.
+ */
+async function deletePreviousReminderMessage(client, type) {
+    const { channelId, messageId } = stateManager.getLastMessage(type);
+    if (!channelId || !messageId) return;
+    try {
+        const channel = await client.channels.fetch(channelId);
+        if (!channel) return;
+        const message = await channel.messages.fetch(messageId);
+        await message.delete();
+    } catch (e) {
+        // Already deleted / channel gone / no permission - safe to ignore.
+    }
+}
+
 function scheduleRepeatIfNeeded(client, userId, type) {
     if (stateManager.isCompleted(type)) return;
     if (isReminderExpired(type)) {
@@ -158,21 +175,22 @@ async function sendReminder(client, userId, type) {
 
         const messageContent = `<@${targetUserId}>`;
 
-        let sent = false;
+        await deletePreviousReminderMessage(client, type);
+
+        let sentMessage = null;
         if (channel) {
-            await channel.send({ content: messageContent, embeds: [embed], components: [row] });
+            sentMessage = await channel.send({ content: messageContent, embeds: [embed], components: [row] });
             console.log(`Sent ${type} reminder to channel ${channel.name} for user ${targetUserId}`);
-            sent = true;
         } else {
             console.log('Target channel not set or invalid, falling back to DM.');
             const user = await client.users.fetch(targetUserId);
             if (user) {
-                await user.send({ embeds: [embed], components: [row] });
-                sent = true;
+                sentMessage = await user.send({ embeds: [embed], components: [row] });
             }
         }
 
-        if (sent) {
+        if (sentMessage) {
+            stateManager.setLastMessage(type, sentMessage.channelId, sentMessage.id);
             scheduleRepeatIfNeeded(client, targetUserId, type);
         }
 

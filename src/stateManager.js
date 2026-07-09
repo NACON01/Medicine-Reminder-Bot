@@ -57,7 +57,11 @@ function resetState() {
         date: getLogicalDateString(),
         morning: false,
         night: false,
-        lastActivityDate: null
+        lastActivityDate: null,
+        morningChannelId: null,
+        morningMessageId: null,
+        nightChannelId: null,
+        nightMessageId: null
     };
     saveState(defaultState);
     return defaultState;
@@ -91,9 +95,26 @@ function markFirstActivityToday() {
     return false;
 }
 
+function setLastMessage(type, channelId, messageId) {
+    const state = loadState();
+    state[`${type}ChannelId`] = channelId;
+    state[`${type}MessageId`] = messageId;
+    saveState(state);
+}
+
+function getLastMessage(type) {
+    const state = loadState();
+    return {
+        channelId: state[`${type}ChannelId`] || null,
+        messageId: state[`${type}MessageId`] || null
+    };
+}
+
 module.exports = {
     loadState,
     markCompleted,
     isCompleted,
-    markFirstActivityToday
+    markFirstActivityToday,
+    setLastMessage,
+    getLastMessage
 };
