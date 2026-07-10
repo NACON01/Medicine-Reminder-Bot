@@ -174,12 +174,19 @@ async function sendReminder(client, userId, type) {
             );
 
         const messageContent = `<@${targetUserId}>`;
+        const withMention = stateManager.needsMention(type);
 
         await deletePreviousReminderMessage(client, type);
 
         let sentMessage = null;
         if (channel) {
-            sentMessage = await channel.send({ content: messageContent, embeds: [embed], components: [row] });
+            const payload = withMention
+                ? { content: messageContent, embeds: [embed], components: [row] }
+                : { embeds: [embed], components: [row] };
+            sentMessage = await channel.send(payload);
+            if (withMention) {
+                stateManager.markMentionSent(type);
+            }
             console.log(`Sent ${type} reminder to channel ${channel.name} for user ${targetUserId}`);
         } else {
             console.log('Target channel not set or invalid, falling back to DM.');
@@ -198,6 +205,21 @@ async function sendReminder(client, userId, type) {
         console.error('Error sending reminder:', error);
         if (!stateManager.isCompleted(type) && !isReminderExpired(type)) {
             scheduleRepeatIfNeeded(client, userId, type);
+        }
+    }
+}
+
+function rearmMentionOnActivity() {
+    for (const type of [REMINDER_TYPES.MORNING, REMINDER_TYPES.NIGHT]) {
+        if (stateManager.isCompleted(type)) continue;
+        if (!isWithinReminderWindow(type)) continue;
+
+        const settings = settingsManager.getSettings();
+        const cooldown = settings.mentionRearmCooldownMinutes || config.mentionRearmCooldownMinutes || 60;
+        const last = stateManager.getLastMentionAt(type);
+        if (last && Date.now() - last >= cooldown * 60 * 1000) {
+            stateManager.setNeedsMention(type, true);
+            console.log(`Re-armed ${type} mention after user activity.`);
         }
     }
 }
@@ -229,6 +251,7 @@ async function handleInteraction(interaction) {
         });
     } else if (action === 'no') {
         clearRepeatTimer(type);
+        stateManager.setNeedsMention(type, true);
         
         const snoozeMinutes = settings.snoozeDelayMinutes || config.snoozeDelayMinutes || 60;
 
@@ -256,5 +279,6 @@ module.exports = {
     REMINDER_TYPES,
     isRepeatActive,
     isReminderExpired,
-    isWithinReminderWindow
+    isWithinReminderWindow,
+    rearmMentionOnActivity
 };

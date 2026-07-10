@@ -11,4 +11,5 @@ module.exports = {
     activeDelayMinutes: parseFloat(process.env.ACTIVE_DELAY_MINUTES || '10'),
     snoozeDelayMinutes: parseFloat(process.env.SNOOZE_DELAY_MINUTES || '30'),
     retryDelayMinutes: parseFloat(process.env.RETRY_DELAY_MINUTES || '1'),
+    mentionRearmCooldownMinutes: parseFloat(process.env.MENTION_REARM_COOLDOWN_MINUTES || '60'),
 };

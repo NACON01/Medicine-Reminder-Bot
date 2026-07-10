@@ -100,6 +100,7 @@ function handlePresenceUpdate(oldPresence, newPresence) {
 
     if (wasOffline && isOnline) {
         logDebug('Transition offline->online detected');
+        reminderSystem.rearmMentionOnActivity();
         checkAndSchedule(newPresence.client, newPresence.userId);
     } else {
         logDebug('No offline->online transition', { wasOffline, isOnline });
@@ -127,6 +128,7 @@ function handleUserActivity(client, userId, source = 'unknown') {
     }
     lastActivityCheck = now;
 
+    reminderSystem.rearmMentionOnActivity();
     checkAndSchedule(client, userId);
 }
 

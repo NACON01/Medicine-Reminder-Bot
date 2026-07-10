@@ -61,7 +61,11 @@ function resetState() {
         morningChannelId: null,
         morningMessageId: null,
         nightChannelId: null,
-        nightMessageId: null
+        nightMessageId: null,
+        morningNeedsMention: true,
+        nightNeedsMention: true,
+        morningLastMentionAt: null,
+        nightLastMentionAt: null
     };
     saveState(defaultState);
     return defaultState;
@@ -110,11 +114,38 @@ function getLastMessage(type) {
     };
 }
 
+function needsMention(type) {
+    const state = loadState();
+    return state[`${type}NeedsMention`] !== false;
+}
+
+function setNeedsMention(type, value) {
+    const state = loadState();
+    state[`${type}NeedsMention`] = !!value;
+    saveState(state);
+}
+
+function markMentionSent(type) {
+    const state = loadState();
+    state[`${type}NeedsMention`] = false;
+    state[`${type}LastMentionAt`] = Date.now();
+    saveState(state);
+}
+
+function getLastMentionAt(type) {
+    const state = loadState();
+    return state[`${type}LastMentionAt`] || null;
+}
+
 module.exports = {
     loadState,
     markCompleted,
     isCompleted,
     markFirstActivityToday,
     setLastMessage,
-    getLastMessage
+    getLastMessage,
+    needsMention,
+    setNeedsMention,
+    markMentionSent,
+    getLastMentionAt
 };
